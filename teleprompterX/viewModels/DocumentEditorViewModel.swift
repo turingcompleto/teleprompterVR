@@ -20,36 +20,64 @@ final class DocumentEditorViewModel: ObservableObject {
     private let repository: DocumentRepository
     private var cancellables = Set<AnyCancellable>()
     
-    init(repository: DocumentRepository) {
+    // Esta propiedad guarda el documento original si venimos a editar
+     let originalDocument: Document?
+    
+    init(repository: DocumentRepository, document: Document? = nil) {
         self.repository = repository
+        self.originalDocument = document
+        
+        // Si nos pasaron un document, precargamos campos
+        if let doc = document {
+            self.title = doc.title
+            self.content = doc.content
+        }
     }
     
-    /// Valida y guarda un nuevo documento
+    /// Valida y guarda (o actualiza) un documento
     func saveDocument() {
-        guard !title.trimmingCharacters(in: .whitespaces).isEmpty,
-              !content.trimmingCharacters(in: .whitespaces).isEmpty else {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, !trimmedContent.isEmpty else {
             errorMessage = "Título y contenido no pueden estar vacíos."
             return
         }
         
         let now = Date()
-        let doc = Document(
-            id: UUID(),
-            title: title,
-            content: content,
-            createdAt: now,
-            updatedAt: now
-        )
+        // Si originalDocument existe, mantenemos su id y createdAt; solo actualizamos contenido y updatedAt
+        let docToSave: Document
+        if var editing = originalDocument {
+            editing.title = trimmedTitle
+            editing.content = trimmedContent
+            editing.updatedAt = now
+            docToSave = editing
+        } else {
+            // Nuevo documento
+            docToSave = Document(
+                id: UUID(),
+                title: trimmedTitle,
+                content: trimmedContent,
+                createdAt: now,
+                updatedAt: now
+            )
+        }
         
-        repository.save(doc)
+        repository.save(docToSave)
             .receive(on: DispatchQueue.main)
-            .sink { completion in
-                if case let .failure(err) = completion {
-                    self.errorMessage = err.localizedDescription
+            .sink(
+                receiveCompletion: { completion in
+                    switch completion {
+                    case .finished:
+                        break
+                    case .failure(let err):
+                        self.errorMessage = err.localizedDescription
+                    }
+                },
+                receiveValue: {
+                    // Avisamos que ya guardamos para que la vista se cierre
+                    self.didSave = true
                 }
-            } receiveValue: {
-                self.didSave = true
-            }
+            )
             .store(in: &cancellables)
     }
 }

@@ -11,15 +11,17 @@ struct TeleprompterView: View {
     let document: Document
     @StateObject private var vm = TeleprompterViewModel()
     
-    // Calculamos altura aproximada sobre el contenido
+    // Calculamos una altura aproximada del contenido
     private func estimatedHeight() -> CGFloat {
         CGFloat(document.content.count) * vm.fontSize * 0.6
     }
     
     var body: some View {
         ZStack {
+            // Fondo negro de todo el teleprompter
             Color.black.ignoresSafeArea()
             
+            // ScrollView que muestra el texto moviéndose
             ScrollView(.vertical, showsIndicators: false) {
                 Text(document.content)
                     .font(.system(size: vm.fontSize,
@@ -29,12 +31,13 @@ struct TeleprompterView: View {
                     .offset(y: -vm.offset)
             }
             
+            // Contenedor de controles (sin ningún fondo)
             VStack {
                 Spacer()
                 
-                // Controles de reproducción
+                // Botones de retroceder / play-pause / avanzar
                 HStack(spacing: 40) {
-                    // Retroceder 50 pts
+                    // Retroceder
                     Button {
                         vm.seek(by: -50)
                     } label: {
@@ -56,7 +59,7 @@ struct TeleprompterView: View {
                             .font(.system(size: 60))
                     }
                     
-                    // Avanzar 50 pts
+                    // Avanzar
                     Button {
                         vm.seek(by: 50)
                     } label: {
@@ -65,26 +68,26 @@ struct TeleprompterView: View {
                     }
                 }
                 .foregroundColor(.white)
+                // NO background, todo transparente
                 .padding(.bottom, 20)
                 
-                // Sliders de velocidad y tamaño
-                HStack {
-                    VStack {
+                // Sliders de velocidad y tamaño (también sin fondo)
+                HStack(spacing: 20) {
+                    VStack(spacing: 4) {
                         Text("Velocidad: \(String(format: "%.1f", vm.speed))×")
                             .foregroundColor(.white)
                         Slider(value: $vm.speed, in: 0.5...5, step: 0.1) {
                             Text("Velocidad")
                         }
                         .onChange(of: vm.speed) { _ in
-                            // Reinicia timer con nueva velocidad
                             if vm.isPlaying {
                                 vm.stop()
                                 vm.play(totalHeight: estimatedHeight())
                             }
                         }
                     }
-                    VStack {
-                        Text("Tamaño: \(Int(vm.fontSize))")
+                    VStack(spacing: 4) {
+                        Text("Tamaño: \(Int(vm.fontSize)) pt")
                             .foregroundColor(.white)
                         Slider(value: $vm.fontSize, in: 16...64, step: 1) {
                             Text("Tamaño")
@@ -93,11 +96,11 @@ struct TeleprompterView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 40)
-                .background(Color.black.opacity(0.5))
+                // NO background aquí tampoco: queda totalmente transparente
             }
         }
         .onAppear {
-            // Arranca automáticamente
+            // Arrancamos de una vez
             vm.play(totalHeight: estimatedHeight())
         }
         .onDisappear {

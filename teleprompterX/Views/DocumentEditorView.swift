@@ -5,6 +5,8 @@
 //  Created by Fausto César Reyes on 16/05/25.
 //
 
+// Views/DocumentEditorView.swift
+
 import SwiftUI
 
 struct DocumentEditorView: View {
@@ -17,16 +19,12 @@ struct DocumentEditorView: View {
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal)
             
-            // Editor multilinea para el contenido
             TextEditor(text: $vm.content)
                 .font(.system(.body, design: .monospaced))
                 .frame(minHeight: 200)
                 .overlay(RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.secondary.opacity(0.3)))
                 .padding(.horizontal)
-                .onAppear {
-                    // TextEditor estuvo disponible desde iOS 14 para multiline editing :contentReference[oaicite:1]{index=1}
-                }
             
             Spacer()
             
@@ -37,23 +35,21 @@ struct DocumentEditorView: View {
                     .bold()
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(vm.title.isEmpty || vm.content.isEmpty
-                                ? Color.gray.opacity(0.5)
-                                : Color.green)
+                    .background(isFormValid
+                                ? Color.green
+                                : Color.gray.opacity(0.5))
                     .foregroundColor(.white)
                     .cornerRadius(8)
             }
-            .disabled(vm.title.isEmpty || vm.content.isEmpty)
+            .disabled(!isFormValid)
             .padding()
         }
-        .navigationTitle("Nuevo Documento")
-        // Cuando termine de guardar, cerramos la vista
+        .navigationTitle(originalTitle)
         .onChange(of: vm.didSave) { saved in
             if saved {
                 presentationMode.wrappedValue.dismiss()
             }
         }
-        // Mostrar alerta en caso de error
         .alert("Error", isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { _ in vm.errorMessage = nil }
@@ -62,5 +58,17 @@ struct DocumentEditorView: View {
         } message: {
             Text(vm.errorMessage ?? "")
         }
+    }
+    
+    // Cuando estamos editando, mostrar título distinto
+    private var originalTitle: String {
+        vm.originalDocument != nil ? "Editar Documento" : "Nuevo Documento"
+    }
+    
+    // Validamos que no queden sólo espacios
+    private var isFormValid: Bool {
+        let t = vm.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let c = vm.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !t.isEmpty && !c.isEmpty
     }
 }
